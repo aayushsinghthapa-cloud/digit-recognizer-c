@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "knn.h"
 #include "mnist.h"
 
 #define TRAIN_IMAGES "data/train-images-idx3-ubyte"
@@ -15,6 +16,8 @@ static void usage(void)
 {
     printf("usage: ./digits <command>\n"
            "  show <index> [--test]   print a training (or test) digit as ASCII art\n"
+           "  knn [n_test] [k]        k-nearest-neighbour accuracy on the first n_test\n"
+           "                          test images (default 1000, k=3; 10000 = full set)\n"
            "  help                    show this message\n");
 }
 
@@ -45,6 +48,36 @@ static int cmd_show(int argc, char **argv)
     return 0;
 }
 
+/* ./digits knn [n_test] [k]: measure k-NN accuracy on the test set. */
+static int cmd_knn(int argc, char **argv)
+{
+    int n = argc > 2 ? atoi(argv[2]) : 1000;
+    int k = argc > 3 ? atoi(argv[3]) : 3;
+    if (k < 1 || k > KNN_MAX_K) {
+        fprintf(stderr, "k must be between 1 and %d\n", KNN_MAX_K);
+        return 1;
+    }
+
+    Dataset train = {0}, test = {0};
+    if (mnist_load(TRAIN_IMAGES, TRAIN_LABELS, &train))
+        return 1;
+    if (mnist_load(TEST_IMAGES, TEST_LABELS, &test)) {
+        mnist_free(&train);
+        return 1;
+    }
+    if (n < 1 || n > test.count)
+        n = test.count;
+
+    printf("k-NN with k=%d on %d test images (each compared to %d training images)\n",
+           k, n, train.count);
+    float acc = knn_evaluate(&train, &test, n, k);
+    printf("accuracy: %.2f%%\n", 100.0f * acc);
+
+    mnist_free(&train);
+    mnist_free(&test);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2 || strcmp(argv[1], "help") == 0) {
@@ -53,6 +86,8 @@ int main(int argc, char **argv)
     }
     if (strcmp(argv[1], "show") == 0)
         return cmd_show(argc, argv);
+    if (strcmp(argv[1], "knn") == 0)
+        return cmd_knn(argc, argv);
 
     fprintf(stderr, "unknown command: %s\n", argv[1]);
     usage();

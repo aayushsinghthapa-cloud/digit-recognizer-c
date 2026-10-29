@@ -3,7 +3,14 @@
 A handwritten digit recognizer (MNIST) written from scratch in C99 using only the standard library and `math.h`. No ML or matrix libraries.
 
 ## Status
-Work in progress, built in stages: data loader ✅ → k-NN → softmax regression → neural network → evaluation.
+Work in progress, built in stages: data loader ✅ → k-NN ✅ → softmax regression → neural network → evaluation.
+
+## Results
+Accuracy on the 10,000-image MNIST test set:
+
+| Model | Test accuracy | Notes |
+|---|---|---|
+| k-nearest-neighbour (k=3) | 97.17% | No training; ~7 min to classify 10k images |
 
 ## Build & run
 ```sh
@@ -13,6 +20,8 @@ make debug     # build ./digits-debug with AddressSanitizer
 ./digits help
 ./digits show 42           # draw training image #42 as ASCII art
 ./digits show 42 --test    # same, from the test set
+./digits knn              # k-NN on the first 1000 test images (~40 s)
+./digits knn 10000 3      # full test set, k=3 (~7 min)
 make leakcheck ARGS="show 42"   # confirm no memory leaks (macOS)
 ```
 
