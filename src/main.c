@@ -5,11 +5,15 @@
 
 #include "knn.h"
 #include "mnist.h"
+#include "rng.h"
+#include "softmax.h"
 
 #define TRAIN_IMAGES "data/train-images-idx3-ubyte"
 #define TRAIN_LABELS "data/train-labels-idx1-ubyte"
 #define TEST_IMAGES  "data/t10k-images-idx3-ubyte"
 #define TEST_LABELS  "data/t10k-labels-idx1-ubyte"
+
+#define SEED 42   /* fixed seed: every run gives the same results */
 
 /* Print the list of available commands. */
 static void usage(void)
@@ -18,7 +22,20 @@ static void usage(void)
            "  show <index> [--test]   print a training (or test) digit as ASCII art\n"
            "  knn [n_test] [k]        k-nearest-neighbour accuracy on the first n_test\n"
            "                          test images (default 1000, k=3; 10000 = full set)\n"
+           "  train-softmax [epochs] [lr]  train softmax regression (default 10, 0.1)\n"
            "  help                    show this message\n");
+}
+
+/* Load both datasets. Returns 0 on success; on failure nothing is left allocated. */
+static int load_both(Dataset *train, Dataset *test)
+{
+    if (mnist_load(TRAIN_IMAGES, TRAIN_LABELS, train))
+        return -1;
+    if (mnist_load(TEST_IMAGES, TEST_LABELS, test)) {
+        mnist_free(train);
+        return -1;
+    }
+    return 0;
 }
 
 /* ./digits show <index> [--test]: load a dataset and draw one image. */
@@ -59,12 +76,8 @@ static int cmd_knn(int argc, char **argv)
     }
 
     Dataset train = {0}, test = {0};
-    if (mnist_load(TRAIN_IMAGES, TRAIN_LABELS, &train))
+    if (load_both(&train, &test))
         return 1;
-    if (mnist_load(TEST_IMAGES, TEST_LABELS, &test)) {
-        mnist_free(&train);
-        return 1;
-    }
     if (n < 1 || n > test.count)
         n = test.count;
 
@@ -73,6 +86,37 @@ static int cmd_knn(int argc, char **argv)
     float acc = knn_evaluate(&train, &test, n, k);
     printf("accuracy: %.2f%%\n", 100.0f * acc);
 
+    mnist_free(&train);
+    mnist_free(&test);
+    return 0;
+}
+
+/* ./digits train-softmax [epochs] [lr]: train and report softmax regression. */
+static int cmd_train_softmax(int argc, char **argv)
+{
+    int epochs = argc > 2 ? atoi(argv[2]) : 10;
+    float lr = argc > 3 ? (float)atof(argv[3]) : 0.1f;
+    const int batch_size = 64;
+
+    Dataset train = {0}, test = {0};
+    if (load_both(&train, &test))
+        return 1;
+
+    SoftmaxModel *m = malloc(sizeof(*m));
+    if (!m) {
+        fprintf(stderr, "out of memory\n");
+        mnist_free(&train);
+        mnist_free(&test);
+        return 1;
+    }
+
+    printf("softmax regression: 784 -> 10, %d epochs, batch %d, lr %g\n",
+           epochs, batch_size, lr);
+    rng_seed(SEED);
+    softmax_init(m);
+    softmax_train(m, &train, &test, epochs, batch_size, lr);
+
+    free(m);
     mnist_free(&train);
     mnist_free(&test);
     return 0;
@@ -88,6 +132,8 @@ int main(int argc, char **argv)
         return cmd_show(argc, argv);
     if (strcmp(argv[1], "knn") == 0)
         return cmd_knn(argc, argv);
+    if (strcmp(argv[1], "train-softmax") == 0)
+        return cmd_train_softmax(argc, argv);
 
     fprintf(stderr, "unknown command: %s\n", argv[1]);
     usage();
