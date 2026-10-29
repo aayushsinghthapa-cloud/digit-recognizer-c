@@ -16,9 +16,11 @@
 
 **Step 4: understanding the errors.** A confusion matrix shows the network mostly confuses 4 with 9 and 7 with 9, which are shapes one stroke apart. Its most confident mistakes include digits a human would struggle with.
 
+**Step 5: a live demo.** An optional raylib window lets you draw a digit with the mouse. The drawing is cropped, scaled to 20×20 and centred by centre of mass in 28×28, just as MNIST was prepared, then fed to the network, which updates its 10 probability bars as you draw.
+
 **Engineering.** It's C99 with one module per job: the loader, matrix math, RNG, each model, evaluation and the CLI. Results are reproducible thanks to a fixed seed and a custom RNG. I checked memory with AddressSanitizer and the macOS `leaks` tool, and trained weights save to a validated binary file.
 
-## 15 likely questions, with model answers
+## 16 likely questions, with model answers
 
 **1. Why write it in C without libraries?**
 To understand what libraries like PyTorch do for you. With no library, every step has to be written out: the IDX parsing, the matrix multiply, softmax, the gradient formulas. If I can write backprop myself, I understand it. As a side effect, the whole thing has no dependencies beyond a C compiler.
@@ -62,7 +64,10 @@ Every allocation has a matching free, including on error paths. I build a debug 
 **14. What are the most common mistakes, and why?**
 4 → 9 (20 times), 7 → 9 (15), 5 → 3 (11) and 7 → 2 (11). These pairs differ by one stroke: a 4 with a closed top is nearly a 9. Some of the most confident mistakes are honestly ambiguous: the network was 99.7% sure test image #2654 is a 1, and it does look like one.
 
-**15. How would you improve it?**
+**15. Why do you preprocess the mouse drawing before predicting?**
+The network only learned from MNIST digits, which are cropped, scaled to fit 20×20 and centred by centre of mass in a 28×28 image. A raw mouse drawing is bigger, off-centre and a different size, so it looks nothing like the training data. Repeating MNIST's exact preparation steps fixes that. I tested it by enlarging and moving all the test digits, then preprocessing them back: accuracy only changed from 97.51% to 97.48%.
+
+**16. How would you improve it?**
 - **A convolutional neural network (CNN):** it shares weights across positions, so it recognizes a stroke anywhere in the image. That typically gets above 99%.
 - **Data augmentation:** small shifts and rotations of the training images.
 - **A better optimizer:** momentum or Adam.

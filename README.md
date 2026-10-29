@@ -7,6 +7,8 @@ Three classifiers are built up step by step:
 2. **Softmax regression**: one learned linear layer (784 → 10).
 3. **Neural network**: 784 → 128 (ReLU) → 10, with backpropagation written by hand.
 
+Plus an optional **draw-a-digit window** (raylib) that shows the network's live prediction as you draw.
+
 Everything is hand-written, including matrix math, softmax, cross-entropy, backprop, random number generation and file parsing.
 
 ## Results
@@ -35,6 +37,7 @@ make debug     # build ./digits-debug with AddressSanitizer
 ./digits train-nn         # train the neural network, save to models/nn.bin (~60 s)
 ./digits test-nn          # reload saved weights, report test accuracy
 ./digits eval             # confusion matrix + most-confused pairs + worst mistakes
+make gui && ./digits-gui  # optional: draw digits with the mouse (needs `brew install raylib`)
 make leakcheck ARGS="show 42"   # confirm no memory leaks (macOS)
 ```
 
@@ -49,6 +52,9 @@ src/
   softmax.c   softmax regression
   nn.c        neural network + backprop + save/load
   eval.c      confusion matrix + error analysis
+  preprocess.c  drawing → MNIST-style 28×28 input
+gui/
+  gui.c       optional raylib drawing window
 scripts/    helper scripts (dataset download)
 docs/       ARCHITECTURE.md, MATH.md, EXPLAIN_IT.md
 data/       MNIST files (downloaded, not committed)
@@ -65,4 +71,5 @@ models/     saved weights (not committed)
 - **Linear models have a ceiling.** Softmax regression gets one template per digit and stalls around 92%. A hidden layer with a non-linearity (ReLU) lets the model combine features, which pushes it past 97%.
 - **Backprop is just the chain rule**, applied layer by layer from the loss back to each weight. Writing it by hand made `dz = p − onehot(y)`, `dW = dz·xᵀ` and `dh = Wᵀ·dz` concrete.
 - **Small engineering details matter.** You have to read IDX headers byte by byte because they're big-endian. Softmax needs the max subtracted first or it overflows. Random init breaks symmetry. A fixed seed makes results reproducible. AddressSanitizer and `leaks` catch memory bugs that C would otherwise hide.
+- **The input has to match the training data.** A mouse drawing has to be cropped, scaled and centred exactly the way MNIST was, or the network sees something unlike anything it trained on.
 - **Look at the errors, not only the accuracy.** The confusion matrix shows *which* digits get mixed up, and some "mistakes" are genuinely ambiguous handwriting.

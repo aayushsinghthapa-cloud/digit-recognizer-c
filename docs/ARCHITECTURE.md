@@ -14,6 +14,8 @@ flowchart TD
     eval["eval.c<br/>confusion matrix, mistakes"]
     matrix["matrix.c<br/>dot, mat-vec, outer product, softmax"]
     rng["rng.c<br/>seeded RNG, shuffle, normal samples"]
+    gui["gui/gui.c (optional, raylib)<br/>draw a digit, live prediction"]
+    pre["preprocess.c<br/>drawing → MNIST-style 28×28"]
 
     main --> mnist
     main --> knn
@@ -30,7 +32,12 @@ flowchart TD
     nn --> mnist
     nn --> matrix
     nn --> rng
+    gui --> pre
+    gui --> nn
+    pre --> mnist
 ```
+
+`gui/gui.c` is the only file that uses a library other than the C standard library (raylib). It lives outside `src/` so the core build (`make`) stays dependency-free; `make gui` builds it from `gui/gui.c` plus every `src/` file except `main.c`.
 
 ## Training loop (neural network)
 
@@ -81,9 +88,25 @@ Parameter count: 128·784 + 128 + 10·128 + 10 = **101,770**. Saved as 407,096 b
 | [src/softmax.c](../src/softmax.c) / [.h](../src/softmax.h) | One linear layer + softmax, trained with mini-batch gradient descent. |
 | [src/nn.c](../src/nn.c) / [.h](../src/nn.h) | Two-layer network: He init, forward pass, hand-written backprop, update, save/load. |
 | [src/eval.c](../src/eval.c) / [.h](../src/eval.h) | Confusion matrix, most-confused pairs, ASCII prints of the most confident mistakes. Takes plain arrays of predictions, so it works with any model. |
-| [Makefile](../Makefile) | `make`, `make debug` (AddressSanitizer), `make leakcheck`, `make data`. |
+| [src/preprocess.c](../src/preprocess.c) / [.h](../src/preprocess.h) | Turns a free-hand drawing into an MNIST-style input: crop to the ink, scale the longer side to 20 px, centre by centre of mass in 28×28. |
+| [gui/gui.c](../gui/gui.c) | Optional raylib window: mouse drawing on a 280×280 canvas, live probability bars, preview of the 28×28 network input. |
+| [Makefile](../Makefile) | `make`, `make debug` (AddressSanitizer), `make leakcheck`, `make data`, `make gui`. |
 | [scripts/download_mnist.sh](../scripts/download_mnist.sh) | Downloads and unzips MNIST into `data/`. |
 
 ## Memory layout
 
 Every matrix is one flat `float` array in **row-major** order: element (r, c) of a matrix with `cols` columns is `m[r * cols + c]`. The dataset is the same: image `i` starts at `images[i * 784]`. This keeps memory reads sequential, which is what makes the plain C loops fast.
+
+## Drawing → prediction (GUI)
+
+```mermaid
+flowchart LR
+    A["Mouse strokes<br/>280×280 canvas"] --> B["Bounding box<br/>crop to the ink"]
+    B --> C["Scale<br/>longer side → 20 px"]
+    C --> D["Centre of mass<br/>→ pixel (14, 14)"]
+    D --> E["28×28 input<br/>784 floats"]
+    E --> F["nn_forward"]
+    F --> G["10 probability bars"]
+```
+
+The network only ever saw MNIST digits, which were all cropped, scaled to fit 20×20 and centred by centre of mass in 28×28. A raw mouse drawing is a different size and in a different place, so without these steps accuracy drops sharply. As a check, I enlarged every test digit to a random size, put it at a random position on a 280×280 canvas, and ran it through `preprocess_canvas`: accuracy went from 97.51% to 97.48%.

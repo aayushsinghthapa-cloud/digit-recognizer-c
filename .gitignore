@@ -1,6 +1,7 @@
 # Build outputs
 digits
 digits-debug
+digits-gui
 *.o
 *.dSYM/
 
