@@ -39,7 +39,7 @@ $$a \cdot b = \sum_i a_i b_i$$
 
 A matrix is a stack of rows. Multiplying a matrix by a vector just means **one dot product per row**:
 
-$$y_r = \sum_c W_{rc}\, x_c + b_r$$
+$$y_r = \sum_c W_{rc} x_c + b_r$$
 
 With `W` of shape 10×784, you get 10 scores: one pattern detector per digit. In the network, `W1` (128×784) runs 128 detectors over the image at once.
 → [`mat_vec_mul_add`](../src/matrix.c#L28)
@@ -81,7 +81,7 @@ It's small when the model is confidently right and huge when it's confidently wr
 
 Think of the loss as a landscape where every weight is a direction you can move. The **gradient** `∂L/∂w` says which way is uphill and how steep it is. So step the other way:
 
-$$w \leftarrow w - \eta \, \frac{\partial L}{\partial w}$$
+$$w \leftarrow w - \eta \frac{\partial L}{\partial w}$$
 
 `η` (eta) is the **learning rate**, the size of each step. Too large and you overshoot the valley; too small and training crawls.
 
