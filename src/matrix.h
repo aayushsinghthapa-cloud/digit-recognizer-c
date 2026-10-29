@@ -13,6 +13,12 @@ float vec_sq_dist(const float *a, const float *b, int n);
 void mat_vec_mul_add(const float *W, const float *x, const float *b,
                      float *y, int rows, int cols);
 
+/* Transposed matrix-vector product: y = W^T v, W is rows x cols, y has cols entries. */
+void mat_t_vec_mul(const float *W, const float *v, float *y, int rows, int cols);
+
+/* Scaled add: a += scale * b. */
+void vec_add_scaled(float *a, const float *b, float scale, int n);
+
 /* Add an outer product: W += scale * (u v^T), i.e. W[r][c] += scale * u[r] * v[c]. */
 void mat_add_outer(float *W, const float *u, const float *v,
                    float scale, int rows, int cols);

@@ -4,8 +4,6 @@
 
 #include "mnist.h"
 
-#define NUM_CLASSES 10
-
 /* The model's learnable parameters. */
 typedef struct {
     float W[NUM_CLASSES * MNIST_PIXELS];   /* 10 x 784 weights */

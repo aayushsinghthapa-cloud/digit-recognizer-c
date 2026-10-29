@@ -11,6 +11,9 @@ void rng_seed(uint64_t seed);
 /* Uniform random float in [0, 1). */
 float rng_uniform(void);
 
+/* Random float from a normal (Gaussian) distribution with mean 0, std dev 1. */
+float rng_normal(void);
+
 /* Shuffle arr[0..n-1] in place (Fisher-Yates). */
 void rng_shuffle(int *arr, int n);
 

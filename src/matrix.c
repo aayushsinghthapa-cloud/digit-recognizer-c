@@ -32,6 +32,23 @@ void mat_vec_mul_add(const float *W, const float *x, const float *b,
         y[r] = vec_dot(W + r * cols, x, cols) + b[r];
 }
 
+/* y[c] = sum_r W[r][c] * v[r]: send each row's signal back to the columns.
+ * Loops row by row so memory is read in order (fast). */
+void mat_t_vec_mul(const float *W, const float *v, float *y, int rows, int cols)
+{
+    for (int c = 0; c < cols; c++)
+        y[c] = 0.0f;
+    for (int r = 0; r < rows; r++)
+        vec_add_scaled(y, W + r * cols, v[r], cols);
+}
+
+/* a[i] += scale * b[i] */
+void vec_add_scaled(float *a, const float *b, float scale, int n)
+{
+    for (int i = 0; i < n; i++)
+        a[i] += scale * b[i];
+}
+
 /* W[r][c] += scale * u[r] * v[c] */
 void mat_add_outer(float *W, const float *u, const float *v,
                    float scale, int rows, int cols)

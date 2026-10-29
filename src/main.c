@@ -5,6 +5,7 @@
 
 #include "knn.h"
 #include "mnist.h"
+#include "nn.h"
 #include "rng.h"
 #include "softmax.h"
 
@@ -12,6 +13,8 @@
 #define TRAIN_LABELS "data/train-labels-idx1-ubyte"
 #define TEST_IMAGES  "data/t10k-images-idx3-ubyte"
 #define TEST_LABELS  "data/t10k-labels-idx1-ubyte"
+
+#define NN_WEIGHTS   "models/nn.bin"
 
 #define SEED 42   /* fixed seed: every run gives the same results */
 
@@ -23,7 +26,10 @@ static void usage(void)
            "  knn [n_test] [k]        k-nearest-neighbour accuracy on the first n_test\n"
            "                          test images (default 1000, k=3; 10000 = full set)\n"
            "  train-softmax [epochs] [lr]  train softmax regression (default 10, 0.1)\n"
-           "  help                    show this message\n");
+           "  train-nn [epochs] [lr]  train the neural network and save it to %s\n"
+           "                          (default 10, 0.1)\n"
+           "  test-nn                 load saved weights and report test accuracy\n"
+           "  help                    show this message\n", NN_WEIGHTS);
 }
 
 /* Load both datasets. Returns 0 on success; on failure nothing is left allocated. */
@@ -122,6 +128,63 @@ static int cmd_train_softmax(int argc, char **argv)
     return 0;
 }
 
+/* ./digits train-nn [epochs] [lr]: train the network, then save its weights. */
+static int cmd_train_nn(int argc, char **argv)
+{
+    int epochs = argc > 2 ? atoi(argv[2]) : 10;
+    float lr = argc > 3 ? (float)atof(argv[3]) : 0.1f;
+    const int batch_size = 64;
+
+    Dataset train = {0}, test = {0};
+    if (load_both(&train, &test))
+        return 1;
+
+    NNModel *m = malloc(sizeof(*m));
+    if (!m) {
+        fprintf(stderr, "out of memory\n");
+        mnist_free(&train);
+        mnist_free(&test);
+        return 1;
+    }
+
+    printf("neural network: 784 -> %d (ReLU) -> 10, %d epochs, batch %d, lr %g\n",
+           NN_HIDDEN, epochs, batch_size, lr);
+    rng_seed(SEED);
+    nn_init(m);
+    nn_train(m, &train, &test, epochs, batch_size, lr);
+
+    int rc = nn_save(m, NN_WEIGHTS);
+    if (rc == 0)
+        printf("saved weights to %s\n", NN_WEIGHTS);
+
+    free(m);
+    mnist_free(&train);
+    mnist_free(&test);
+    return rc ? 1 : 0;
+}
+
+/* ./digits test-nn: load saved weights and measure test accuracy. */
+static int cmd_test_nn(void)
+{
+    Dataset test = {0};
+    if (mnist_load(TEST_IMAGES, TEST_LABELS, &test))
+        return 1;
+
+    NNModel *m = malloc(sizeof(*m));
+    int rc = 1;
+    if (!m)
+        fprintf(stderr, "out of memory\n");
+    else if (nn_load(m, NN_WEIGHTS) == 0) {
+        printf("loaded %s\ntest accuracy: %.2f%%\n", NN_WEIGHTS,
+               100.0f * nn_accuracy(m, &test));
+        rc = 0;
+    }
+
+    free(m);
+    mnist_free(&test);
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2 || strcmp(argv[1], "help") == 0) {
@@ -134,6 +197,10 @@ int main(int argc, char **argv)
         return cmd_knn(argc, argv);
     if (strcmp(argv[1], "train-softmax") == 0)
         return cmd_train_softmax(argc, argv);
+    if (strcmp(argv[1], "train-nn") == 0)
+        return cmd_train_nn(argc, argv);
+    if (strcmp(argv[1], "test-nn") == 0)
+        return cmd_test_nn();
 
     fprintf(stderr, "unknown command: %s\n", argv[1]);
     usage();

@@ -5,6 +5,7 @@
 #define MNIST_ROWS   28
 #define MNIST_COLS   28
 #define MNIST_PIXELS (MNIST_ROWS * MNIST_COLS)   /* 784 */
+#define NUM_CLASSES  10                          /* digits 0-9 */
 
 /* A set of images and their labels.
  * images is count x 784 floats, row-major: image i starts at images[i * 784].
