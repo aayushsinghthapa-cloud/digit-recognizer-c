@@ -6,11 +6,12 @@ Each arrow means "uses". `main.c` is the only file that knows about the command 
 
 ```mermaid
 flowchart TD
-    main["main.c<br/>CLI: show, knn, train-softmax, train-nn, test-nn"]
+    main["main.c<br/>CLI: show, knn, train-softmax, train-nn, test-nn, eval"]
     mnist["mnist.c<br/>IDX loader, normalization, ASCII art"]
     knn["knn.c<br/>k-nearest-neighbour"]
     softmax["softmax.c<br/>softmax regression 784→10"]
     nn["nn.c<br/>neural network 784→128→10"]
+    eval["eval.c<br/>confusion matrix, mistakes"]
     matrix["matrix.c<br/>dot, mat-vec, outer product, softmax"]
     rng["rng.c<br/>seeded RNG, shuffle, normal samples"]
 
@@ -19,6 +20,8 @@ flowchart TD
     main --> softmax
     main --> nn
     main --> rng
+    main --> eval
+    eval --> mnist
     knn --> mnist
     knn --> matrix
     softmax --> mnist
@@ -77,6 +80,7 @@ Parameter count: 128·784 + 128 + 10·128 + 10 = **101,770**. Saved as 407,096 b
 | [src/knn.c](../src/knn.c) / [.h](../src/knn.h) | Baseline with no learning: the k closest training images vote. |
 | [src/softmax.c](../src/softmax.c) / [.h](../src/softmax.h) | One linear layer + softmax, trained with mini-batch gradient descent. |
 | [src/nn.c](../src/nn.c) / [.h](../src/nn.h) | Two-layer network: He init, forward pass, hand-written backprop, update, save/load. |
+| [src/eval.c](../src/eval.c) / [.h](../src/eval.h) | Confusion matrix, most-confused pairs, ASCII prints of the most confident mistakes. Takes plain arrays of predictions, so it works with any model. |
 | [Makefile](../Makefile) | `make`, `make debug` (AddressSanitizer), `make leakcheck`, `make data`. |
 | [scripts/download_mnist.sh](../scripts/download_mnist.sh) | Downloads and unzips MNIST into `data/`. |
 

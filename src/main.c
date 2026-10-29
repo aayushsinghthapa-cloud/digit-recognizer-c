@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "eval.h"
 #include "knn.h"
 #include "mnist.h"
 #include "nn.h"
@@ -29,6 +30,8 @@ static void usage(void)
            "  train-nn [epochs] [lr]  train the neural network and save it to %s\n"
            "                          (default 10, 0.1)\n"
            "  test-nn                 load saved weights and report test accuracy\n"
+           "  eval [n_mistakes]       confusion matrix, confused pairs, and the most\n"
+           "                          confident mistakes of the saved network (default 3)\n"
            "  help                    show this message\n", NN_WEIGHTS);
 }
 
@@ -185,6 +188,47 @@ static int cmd_test_nn(void)
     return rc;
 }
 
+/* ./digits eval [n_mistakes]: full error analysis of the saved network. */
+static int cmd_eval(int argc, char **argv)
+{
+    int n_mistakes = argc > 2 ? atoi(argv[2]) : 3;
+
+    Dataset test = {0};
+    if (mnist_load(TEST_IMAGES, TEST_LABELS, &test))
+        return 1;
+
+    NNModel *m = malloc(sizeof(*m));
+    int *pred = malloc(test.count * sizeof(int));
+    float *confidence = malloc(test.count * sizeof(float));
+    int rc = 1;
+
+    if (!m || !pred || !confidence) {
+        fprintf(stderr, "out of memory\n");
+    } else if (nn_load(m, NN_WEIGHTS) == 0) {
+        NNActivations a;
+        for (int i = 0; i < test.count; i++) {
+            pred[i] = nn_forward(m, mnist_image(&test, i), &a);
+            confidence[i] = a.p[pred[i]];
+        }
+
+        int conf[NUM_CLASSES][NUM_CLASSES];
+        eval_confusion(test.labels, pred, test.count, conf);
+        eval_print_confusion(conf);
+        eval_print_confused_pairs(conf, 5);
+        if (n_mistakes > 0) {
+            printf("\nmost confident mistakes:\n");
+            eval_print_mistakes(&test, pred, confidence, n_mistakes);
+        }
+        rc = 0;
+    }
+
+    free(m);
+    free(pred);
+    free(confidence);
+    mnist_free(&test);
+    return rc;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2 || strcmp(argv[1], "help") == 0) {
@@ -201,6 +245,8 @@ int main(int argc, char **argv)
         return cmd_train_nn(argc, argv);
     if (strcmp(argv[1], "test-nn") == 0)
         return cmd_test_nn();
+    if (strcmp(argv[1], "eval") == 0)
+        return cmd_eval(argc, argv);
 
     fprintf(stderr, "unknown command: %s\n", argv[1]);
     usage();
